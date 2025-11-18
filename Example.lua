@@ -2,7 +2,7 @@
 Getgenv().Animation = true
 
 -- Load WertUi library
-local WertUi = loadstring(game:HttpGet("loadstring(game:HttpGet('https://raw.githubusercontent.com/idcgj36/WertNotify/refs/heads/main/Obfuscate.lua"))()
+local WertUi = loadstring(game:HttpGet("https://raw.githubusercontent.com/idcgj36/WertNotify/refs/heads/main/Obfuscate.lua"))()
 
 -- Notification 1
 WertUi:Notify({
