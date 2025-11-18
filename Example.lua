@@ -11,8 +11,8 @@ WertUi:Notify({
     Icon = "rbxassetid://6034509993",    -- Icon ID
     StrokeThickness = 2,     -- Border thickness
     Color = ColorSequence.new( 
-        Color3.fromHex("#BD08FF"), 
-        Color3.fromHex("#00FFFF")
+        Color3.fromRGB(255, 0, 0),
+        Color3.fromRGB(255, 255, 0)
     ),
 })
 
@@ -26,7 +26,7 @@ WertUi:Notify({
     Icon = "rbxassetid://6034509993",
     StrokeThickness = 2,
     Color = ColorSequence.new( 
-        Color3.fromHex("#BD08FF"), 
-        Color3.fromHex("#00FFFF")
+        Color3.fromRGB(0, 255, 255),
+        Color3.fromRGB(0, 0, 255)
     ),
 })
