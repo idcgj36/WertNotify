@@ -1,5 +1,5 @@
 -- Enabled Stroke Animation
-getgenv().Animation = true
+_G.WertUiAnimationcond = true
 
 -- Load Notification
 local WertUi = loadstring(game:HttpGet("https://raw.githubusercontent.com/idcgj36/WertNotify/refs/heads/main/Obfuscate.lua"))()
@@ -15,7 +15,7 @@ WertUi:Notify({
     StrokeThickness = 2, -- Border thickness
     StrokeColors = { 
         Color3.fromRGB(255, 0, 0),
-        Color3.fromRGB(0, 255, 0),
+        Color3.fromRGB(0, 255, 255)
         -- You can add more colors than that.
     }
 })
@@ -31,8 +31,9 @@ WertUi:Notify({
     StrokeThickness = 2,
     StrokeColors = {
         Color3.fromRGB(0, 255, 0),
-        Color3.fromRGB(255, 0, 255),
+        Color3.fromRGB(255, 0, 255)
     }
 })
+
 
 
