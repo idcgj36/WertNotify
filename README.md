@@ -86,7 +86,6 @@ WertUi:Notify({
 | Title | string | Notification title |
 | Description | string | Notification message |
 | Duration | number | Time before disappearing |
-| Location | string | Notification position (BottomRight, TopRight, TopCenter) |
 | Corner | number | Corner radius |
 | Transparent | number | Background transparency |
 | Icon | string | Roblox asset icon |
