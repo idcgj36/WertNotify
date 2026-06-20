@@ -1,0 +1,429 @@
+if _G.StrokeAnimation == nil then
+    _G.StrokeAnimation = true
+end
+
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+
+local hiddenParent = (gethui and gethui()) 
+    or (gethiddenui and gethiddenui()) 
+    or (gethiddengui and gethiddengui()) 
+    or (get_hidden_ui and get_hidden_ui()) 
+    or (get_hidden_gui and get_hidden_gui())
+
+if not hiddenParent or typeof(hiddenParent) ~= "Instance" then
+    hiddenParent = game:GetService("CoreGui")
+end
+
+local ScreenGui = hiddenParent:FindFirstChild("WertUi_Notifications") or Instance.new("ScreenGui")
+ScreenGui.Name = "WertUi_Notifications"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.DisplayOrder = 100000000
+ScreenGui.Parent = hiddenParent
+
+local Holders = {}
+local activeNotifications = {}
+
+local function createHolder(name, anchor, alignH, alignV)
+    local frame = ScreenGui:FindFirstChild(name) or Instance.new("Frame")
+    frame.Name = name
+    frame.BackgroundTransparency = 1
+    frame.AnchorPoint = anchor
+    frame.Parent = ScreenGui
+
+    local layout = frame:FindFirstChildOfClass("UIListLayout") or Instance.new("UIListLayout")  
+    layout.Padding = UDim.new(0, 10)  
+    layout.HorizontalAlignment = alignH  
+    layout.VerticalAlignment = alignV  
+    layout.SortOrder = Enum.SortOrder.LayoutOrder  
+    layout.Parent = frame  
+  
+    Holders[name] = frame  
+    return frame
+end
+
+createHolder("BottomRight", Vector2.new(1, 1), Enum.HorizontalAlignment.Right, Enum.VerticalAlignment.Bottom)
+createHolder("TopRight", Vector2.new(1, 0), Enum.HorizontalAlignment.Right, Enum.VerticalAlignment.Top)
+createHolder("TopCenter", Vector2.new(0.5, 0), Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Top)
+
+local function updateHolderPositions()
+    local cam = workspace.CurrentCamera
+    if not cam then return end
+    
+    local size = cam.ViewportSize
+    local width = math.clamp(size.X * 0.35, 280, 400)
+    local pad = math.clamp(size.X * 0.02, 10, 25)
+
+    Holders.BottomRight.Size = UDim2.new(0, width, 1, -80)  
+    Holders.BottomRight.Position = UDim2.new(1, -pad, 1, -5)  
+
+    Holders.TopRight.Size = UDim2.new(0, width, 1, -80)  
+    Holders.TopRight.Position = UDim2.new(1, -pad, 0, pad + -5)  
+
+    Holders.TopCenter.Size = UDim2.new(0, width, 1, -80)  
+    Holders.TopCenter.Position = UDim2.new(0.5, 0, 0, pad + -5)
+end
+
+if workspace.CurrentCamera then
+    workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateHolderPositions)
+end
+task.defer(updateHolderPositions)
+
+local function fadeProperty(instance, property, targetValue, duration)
+    local tInfo = TweenInfo.new(duration or 0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = TweenService:Create(instance, tInfo, {[property] = targetValue})
+    tween:Play()
+    return tween
+end
+
+local function resizeNotification(n)
+    if not n or not n.Container or not n.TextHolder then return end
+    
+    n.Container.AutomaticSize = Enum.AutomaticSize.None
+    task.wait(0.01)
+    
+    local targetHeight = n.TextHolder.AbsoluteSize.Y + 25
+    TweenService:Create(n.Container, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Size = UDim2.new(1, 0, 0, targetHeight + 4)
+    }):Play()
+    
+    task.delay(0.25, function()
+        if n.Container and n.Container.Parent then
+            n.Container.AutomaticSize = Enum.AutomaticSize.Y
+        end
+    end)
+end
+
+local WertUi = {}
+
+function WertUi:Notify(settings)
+    local notificationId = HttpService:GenerateGUID(false)
+    local locationName = tostring(settings.Location)
+    local targetHolder = Holders[locationName] or Holders.BottomRight
+
+    local StrokeThickness = settings.StrokeThickness or 0  
+    local StrokeColors = settings.StrokeColors or { Color3.fromRGB(255, 255, 255) }  
+    local StrokeTransparency = settings.StrokeTransparency or 0  
+
+    local FrameContainer = Instance.new("Frame")  
+    FrameContainer.Name = notificationId  
+    FrameContainer.BackgroundTransparency = 1  
+    FrameContainer.ClipsDescendants = false  
+    FrameContainer.Size = UDim2.new(1, 0, 0, 0)  
+    FrameContainer.AutomaticSize = Enum.AutomaticSize.Y  
+    FrameContainer.Parent = targetHolder  
+
+    if locationName:find("Top") then  
+        FrameContainer.LayoutOrder = -os.time()  
+    else  
+        FrameContainer.LayoutOrder = os.time()  
+    end  
+
+    local Frame = Instance.new("CanvasGroup")  
+    Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)  
+    Frame.BackgroundTransparency = settings.Transparent or 0.2  
+    Frame.GroupTransparency = 1  
+    Frame.AnchorPoint = Vector2.new(0.5, 0.5)  
+    Frame.Parent = FrameContainer  
+
+    if locationName == "TopCenter" then  
+        Frame.Size = UDim2.new(1, -4, 1, -4)  
+        Frame.Position = UDim2.new(0.5, 0, -1.2, 0)  
+    elseif locationName == "TopRight" or locationName == "BottomRight" then  
+        Frame.Size = UDim2.new(1, -4, 1, -4)  
+        Frame.Position = UDim2.new(1.5, 0, 0.5, 0)  
+    else  
+        Frame.Size = UDim2.new(1, -4, 1, -4)  
+        Frame.Position = UDim2.new(0.5, 0, 1.5, 0)  
+    end  
+
+    local Corner = Instance.new("UICorner")  
+    Corner.CornerRadius = UDim.new(0, 20)  
+    Corner.Parent = Frame  
+
+    if StrokeThickness > 0 then  
+        local UIStroke = Instance.new("UIStroke")  
+        UIStroke.Thickness = StrokeThickness  
+        UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border  
+        UIStroke.Color = Color3.fromRGB(255, 255, 255)  
+        UIStroke.Transparency = StrokeTransparency  
+        UIStroke.Parent = Frame  
+
+        local Gradient = Instance.new("UIGradient")  
+        Gradient.Rotation = 0  
+        Gradient.Parent = UIStroke  
+
+        local points = {}  
+        if #StrokeColors == 1 then  
+            points[1] = ColorSequenceKeypoint.new(0, StrokeColors[1])  
+            points[2] = ColorSequenceKeypoint.new(1, StrokeColors[1])  
+        else  
+            for i, c in ipairs(StrokeColors) do  
+                points[#points + 1] = ColorSequenceKeypoint.new((i - 1) / (#StrokeColors - 1), c)  
+            end  
+        end  
+
+        Gradient.Color = ColorSequence.new(points)  
+
+        if _G.StrokeAnimation and #StrokeColors > 1 then  
+            task.spawn(function()  
+                while Frame.Parent do  
+                    TweenService:Create(Gradient, TweenInfo.new(2.0, Enum.EasingStyle.Linear), {  
+                        Rotation = Gradient.Rotation + 180  
+                    }):Play()  
+                    task.wait(2.0)  
+                end  
+            end)  
+        end  
+    end  
+
+    local Padding = Instance.new("UIPadding")  
+    Padding.PaddingTop = UDim.new(0, 10); Padding.PaddingBottom = UDim.new(0, 10)  
+    Padding.PaddingLeft = UDim.new(0, 10); Padding.PaddingRight = UDim.new(0, 10)  
+    Padding.Parent = Frame  
+
+    local Icon = Instance.new("ImageLabel")  
+    Icon.Name = "Icon"  
+    Icon.Image = settings.Icon or "rbxassetid://6034509993"  
+    Icon.BackgroundTransparency = 1  
+    Icon.Size = UDim2.new(0, 24, 0, 24)  
+    Icon.Parent = Frame  
+
+    if settings.RotationIcon then  
+        task.spawn(function()  
+            while Icon.Parent and Frame.Parent do  
+                Icon.Rotation = 0  
+
+                local tween = TweenService:Create(  
+                    Icon,  
+                    TweenInfo.new(1, Enum.EasingStyle.Linear),  
+                    { Rotation = 360 }  
+                )  
+
+                tween:Play()  
+                tween.Completed:Wait()  
+            end  
+        end)  
+    end  
+
+    local Close = Instance.new("TextButton")  
+    Close.Text = "×"; Close.Font = Enum.Font.GothamBold; Close.TextSize = 14  
+    Close.TextColor3 = Color3.fromRGB(255, 255, 255); Close.BackgroundTransparency = 1  
+    Close.Size = UDim2.new(0, 20, 0, 20); Close.Position = UDim2.new(1, -25, 0, 5)  
+    Close.ZIndex = 5; Close.Parent = Frame  
+
+    local TextHolder = Instance.new("Frame")  
+    TextHolder.BackgroundTransparency = 1; TextHolder.Size = UDim2.new(1, -70, 0, 0)  
+    TextHolder.Position = UDim2.new(0, 35, 0, 0); TextHolder.AutomaticSize = Enum.AutomaticSize.Y  
+    TextHolder.Parent = Frame  
+  
+    local ContentLayout = Instance.new("UIListLayout")  
+    ContentLayout.Padding = UDim.new(0, 6); ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder  
+    ContentLayout.Parent = TextHolder  
+
+    local Title = Instance.new("TextLabel")  
+    Title.Name = "Title"  
+    Title.Text = settings.Title or "Notification"; Title.Font = Enum.Font.GothamSemibold  
+    Title.TextSize = 16; Title.TextColor3 = Color3.fromRGB(255, 255, 255)  
+    Title.BackgroundTransparency = 1; Title.TextXAlignment = Enum.TextXAlignment.Left  
+    Title.Size = UDim2.new(1, 0, 0, 20); Title.LayoutOrder = 1; Title.Parent = TextHolder  
+
+    local Desc = Instance.new("TextLabel")  
+    Desc.Name = "Description"  
+    Desc.Text = settings.Description or ""; Desc.Font = Enum.Font.Gotham; Desc.TextSize = 14  
+    Desc.TextColor3 = Color3.fromRGB(200, 200, 200); Desc.BackgroundTransparency = 1  
+    Desc.TextWrapped = true; Desc.TextXAlignment = Enum.TextXAlignment.Left  
+    Desc.AutomaticSize = Enum.AutomaticSize.Y; Desc.Size = UDim2.new(1, 0, 0, 0)  
+    Desc.LayoutOrder = 2; Desc.Parent = TextHolder  
+
+    if typeof(settings.Buttons) == "table" then  
+        local ButtonsHolder = Instance.new("Frame")  
+        ButtonsHolder.BackgroundTransparency = 1  
+        ButtonsHolder.AutomaticSize = Enum.AutomaticSize.Y  
+        ButtonsHolder.Size = UDim2.new(1, 0, 0, 0)  
+        ButtonsHolder.LayoutOrder = 3  
+        ButtonsHolder.Parent = TextHolder  
+        
+        local VLayout = Instance.new("UIListLayout")  
+        VLayout.Padding = UDim.new(0, 8)  
+        VLayout.Parent = ButtonsHolder  
+        
+        local function createButton(parent, data, scale)  
+            local b = Instance.new("TextButton")  
+            b.Text = data.Text or "Button"  
+            b.Font = Enum.Font.GothamSemibold  
+            b.TextSize = 14  
+
+            b.TextColor3 = data.WhiteText and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(0, 0, 0)  
+            b.BackgroundColor3 = data.Color or Color3.fromRGB(255, 255, 255)  
+            b.Size = UDim2.new(scale, -10, 0, 36)  
+            b.Parent = parent  
+
+            local c = Instance.new("UICorner")  
+            c.CornerRadius = UDim.new(0, 10)  
+            c.Parent = b  
+
+            b.MouseButton1Click:Connect(function()  
+                if typeof(data.Callback) == "function" then  
+                    data.Callback()  
+                end  
+            end)  
+        end  
+        
+        local i = 1  
+        while i <= #settings.Buttons do  
+            if settings.Buttons[i + 1] then  
+                local row = Instance.new("Frame")  
+                row.BackgroundTransparency = 1; row.Size = UDim2.new(1, 0, 0, 36); row.Parent = ButtonsHolder  
+                
+                local H = Instance.new("UIListLayout"); H.FillDirection = Enum.FillDirection.Horizontal  
+                H.Padding = UDim.new(0, 8); H.Parent = row  
+                
+                createButton(row, settings.Buttons[i], 0.5)
+                createButton(row, settings.Buttons[i + 1], 0.5)
+                i += 2  
+            else  
+                createButton(ButtonsHolder, settings.Buttons[i], 1)
+                break  
+            end  
+        end  
+    end  
+
+    task.wait(0.01)  
+    local targetHeight = TextHolder.AbsoluteSize.Y + 25  
+  
+    FrameContainer.AutomaticSize = Enum.AutomaticSize.None  
+    FrameContainer.Size = UDim2.new(1, 0, 0, targetHeight + 4)  
+
+    TweenService:Create(Frame, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {  
+        Position = UDim2.new(0.5, 0, 0.5, 0),  
+        GroupTransparency = 0  
+    }):Play()  
+
+    task.delay(0.45, function()  
+        if FrameContainer and FrameContainer.Parent then   
+            FrameContainer.AutomaticSize = Enum.AutomaticSize.Y  
+        end  
+    end)  
+
+    local function remove()  
+        if FrameContainer:GetAttribute("Destroying") then return end  
+        FrameContainer:SetAttribute("Destroying", true)  
+        activeNotifications[notificationId] = nil  
+      
+        local currentHeight = FrameContainer.AbsoluteSize.Y  
+        FrameContainer.AutomaticSize = Enum.AutomaticSize.None  
+        FrameContainer.Size = UDim2.new(1, 0, 0, currentHeight)  
+
+        local endPos = UDim2.new(1.5, 0, 0.5, 0)  
+        if locationName == "TopCenter" then  
+            endPos = UDim2.new(0.5, 0, -1.2, 0)  
+        end  
+
+        TweenService:Create(Frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {  
+            Position = endPos,  
+            GroupTransparency = 1  
+        }):Play()  
+      
+        task.wait(0.15)  
+      
+        local collapseTween = TweenService:Create(FrameContainer, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {  
+            Size = UDim2.new(1, 0, 0, 0)  
+        })  
+        collapseTween:Play()  
+      
+        collapseTween.Completed:Connect(function()   
+            FrameContainer:Destroy()   
+        end)  
+    end  
+
+    Close.MouseButton1Click:Connect(remove)  
+  
+    local autoDeleteTask = task.delay(settings.Duration or 5, remove)  
+  
+    activeNotifications[notificationId] = {  
+        Container = FrameContainer,  
+        Frame = Frame,  
+        TextHolder = TextHolder,  
+        TitleLabel = Title,  
+        DescLabel = Desc,  
+        IconLabel = Icon,  
+        Location = locationName,  
+        TriggerDestroy = remove,  
+        CancelDelete = function()  
+            task.cancel(autoDeleteTask)  
+        end  
+    }  
+
+    return notificationId
+end
+
+function WertUi:SetTitle(text, id)
+    local function update(n)
+        fadeProperty(n.TitleLabel, "TextTransparency", 1, 0.1).Completed:Connect(function()
+            n.TitleLabel.Text = text
+            fadeProperty(n.TitleLabel, "TextTransparency", 0, 0.1)
+            resizeNotification(n)
+        end)
+    end
+    
+    if id then
+        local n = activeNotifications[id]
+        if n then update(n) end
+    else
+        for _, n in pairs(activeNotifications) do update(n) end
+    end
+end
+
+function WertUi:SetDescription(text, id)
+    local function update(n)
+        fadeProperty(n.DescLabel, "TextTransparency", 1, 0.1).Completed:Connect(function()
+            n.DescLabel.Text = text
+            fadeProperty(n.DescLabel, "TextTransparency", 0, 0.1)
+            resizeNotification(n)
+        end)
+    end
+    
+    if id then
+        local n = activeNotifications[id]
+        if n then update(n) end
+    else
+        for _, n in pairs(activeNotifications) do update(n) end
+    end
+end
+
+function WertUi:SetIcon(img, id)
+    local function update(n)
+        fadeProperty(n.IconLabel, "ImageTransparency", 1, 0.1).Completed:Connect(function()
+            n.IconLabel.Image = img
+            fadeProperty(n.IconLabel, "ImageTransparency", 0, 0.1)
+        end)
+    end
+    
+    if id then
+        local n = activeNotifications[id]
+        if n then update(n) end
+    else
+        for _, n in pairs(activeNotifications) do update(n) end
+    end
+end
+
+function WertUi:Destroy(id)
+    if id then
+        local n = activeNotifications[id]
+        if n and n.TriggerDestroy then
+            n.CancelDelete()
+            n.TriggerDestroy()
+        end
+    else
+        for _, n in pairs(activeNotifications) do
+            if n.TriggerDestroy then
+                n.CancelDelete()
+                n.TriggerDestroy()
+            end
+        end
+    end
+end
+
+return WertUi
